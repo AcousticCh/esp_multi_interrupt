@@ -11,3 +11,6 @@ old_versions
 
 
 sdkconfig
+
+
+!main/multi_*
