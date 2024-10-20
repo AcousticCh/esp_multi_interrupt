@@ -4,7 +4,7 @@ build/
 CMakeLists.txt  
 
 
-main/ 
+main/*.txt
 
 
 old_versions
@@ -12,5 +12,3 @@ old_versions
 
 sdkconfig
 
-
-!main/multi_*
