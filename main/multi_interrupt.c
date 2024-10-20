@@ -4,7 +4,7 @@
 #include "freertos/task.h"
 
 /* this program with have multiple revisions
-   v1 - 2 buttons one led on/off
+   v1 - 2 buttons one led on/off  -- complete
    v2 - 2 buttons 2 leds on/off
    v3 - 2 buttons 1 led pwm
    v2 - 3 buttons 1 led pwm + on/off */
