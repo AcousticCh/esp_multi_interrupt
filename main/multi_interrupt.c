@@ -36,10 +36,13 @@ void app_main(void)
 	gpio_set_direction(BUTTON_1, GPIO_MODE_INPUT);
         gpio_set_direction(BUTTON_2, GPIO_MODE_INPUT);
 
+	//button 1 uses a pullup resistor keeping the pin at Vcc until button is pressed switching the V from vcc to 0v for a negative/falling edge
 	gpio_set_pull_mode(BUTTON_1, GPIO_PULLUP_ONLY);
-        gpio_set_pull_mode(BUTTON_2, GPIO_PULLUP_ONLY);
 
-	gpio_set_intr_type(BUTTON_1, GPIO_INTR_POSEDGE);
+	// button 2 uses a pulldown resistor keeping the pin at 0v until the button is pressed allowing vcc to flow through pin causing a positive/rising edge
+        gpio_set_pull_mode(BUTTON_2, GPIO_PULLDOWN_ONLY);
+
+	gpio_set_intr_type(BUTTON_1, GPIO_INTR_NEGEDGE);
         gpio_set_intr_type(BUTTON_2, GPIO_INTR_POSEDGE);
 
 
