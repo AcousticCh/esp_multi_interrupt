@@ -5,7 +5,7 @@
 
 /* this program with have multiple revisions
    v1 - 2 buttons one led on/off  -- complete
-   v2 - 2 buttons 2 leds on/off
+   v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm
    v3 - 2 buttons 1 led pwm
    v2 - 3 buttons 1 led pwm + on/off */
 
@@ -15,16 +15,19 @@
 
 #define LED 27
 
+#define LED_2 25
 
 static void button_trigger_1()
 {
 	gpio_set_level(LED, 1);
+	gpio_set_level(LED_2, 1);
 }
 
 
 static void button_trigger_2()
 {
         gpio_set_level(LED, 0);
+	gpio_set_level(LED_2, 0);
 }
 
 
@@ -46,9 +49,10 @@ void app_main(void)
         gpio_set_intr_type(BUTTON_2, GPIO_INTR_POSEDGE);
 
 
-	// LED
+	// LEDS
 	gpio_set_direction(LED, GPIO_MODE_OUTPUT);
 
+	gpio_set_direction(LED_2, GPIO_MODE_OUTPUT);
 	//setup interrupt handler service
 
 	gpio_install_isr_service(0);
