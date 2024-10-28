@@ -6,38 +6,51 @@
 
 /* this program with have multiple revisions
    v1 - 2 buttons one led on/off  -- complete
-   v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm
-   v3 - 2 buttons 1 led pwm
+   v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm -- complete
+   v3 - 2 buttons 1 led pwm -- in progress
    v2 - 3 buttons 1 led pwm + on/off */
 
 #define BUTTON_1 26
 // check if pin 7 works for input/interrupt
 #define BUTTON_2 7
 
-#define LED 27
+#define LED 25
 
 // replaced by LEDC_OUTPUT_IO
 //#define LED_2 25
 
 
 // led pwm control variables
-#define LEDC_TIMER LEDC_TIMER_0
-#define LEDC_MODE LEDC_LOW_SPEED_MODE
-#define LEDC_OUTPUT_IO 25 // output pin
-#define LEDC_CHANNEL LEDC_CHANNEL_0 // controlled by channel 0
-#define LEDC_DUTY_RES LEDC_TIMER_13_BIT // duty resolution of 13 bits
-#define LEDC_DUTY (4096) // 50% duty cycle (2 ** 13) * 50% = 4096
-#define LEDC_FREQUENCY (4000) // frequency in hertz (4khz)
+#define TIMER_NUM LEDC_TIMER_0
+#define SPEED_MODE LEDC_LOW_SPEED_MODE
+#define LED_PIN 27 // output pin
+#define CHANNEL LEDC_CHANNEL_0 // controlled by channel 0
+#define DUTY_CYCLE_BITS LEDC_TIMER_13_BIT // duty resolution of 13 bits
+#define DUTY_CYCLE (0) // 50% duty cycle (2 ** 13) * 50% = 4096
+#define FREQ_HZ (4000) // frequency in hertz (4khz)
+#define MAX_DUTY_CYCLE (4096)
+
+#define FADE_TIME_MS 1000
+
+/*
+button state 0 is doing nothing
+state 1 is rising duty cycle
+state 2 is falling duty cycle
+*/
+
+uint32_t button_state = 0;
+uint32_t current_duty_cycle = 0;
+
 
 // start function for led pwm
-static void led_pwm(void)
+static void led_pwm()
 {
 	//configure timer
 	ledc_timer_config_t ledc_timer = {
-		.speed_mode      = LEDC_MODE,
-		.timer_num       = LEDC_TIMER,
-		.duty_resolution = LEDC_DUTY_RES,
-		.freq_hz         = LEDC_FREQUENCY,
+		.speed_mode      = SPEED_MODE,
+		.timer_num       = TIMER_NUM,
+		.duty_resolution = DUTY_CYCLE_BITS,
+		.freq_hz         = FREQ_HZ,
 		.clk_cfg         = LEDC_AUTO_CLK
 	};
 
@@ -46,12 +59,12 @@ static void led_pwm(void)
 
 	//configure channel
 	ledc_channel_config_t ledc_channel = {
-		.speed_mode      = LEDC_MODE,
-		.channel         = LEDC_CHANNEL,
-		.timer_sel       = LEDC_TIMER,
+		.speed_mode      = SPEED_MODE,
+		.channel         = CHANNEL,
+		.timer_sel       = TIMER_NUM,
 		.intr_type       = LEDC_INTR_DISABLE,
-		.gpio_num        = LEDC_OUTPUT_IO,
-		.duty            = 0,
+		.gpio_num        = LED_PIN,
+		.duty            = DUTY_CYCLE,
 		.hpoint          = 0
 	};
 
@@ -61,21 +74,25 @@ static void led_pwm(void)
 
 static void button_trigger_1()
 {
-	gpio_set_level(LED, 1);
+	button_state = 1;
+
+	//gpio_set_level(LED, 1);
 	//gpio_set_level(LED_2, 1);
 
-	ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY);
-	ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+	//ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY);
+	//ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
 
 static void button_trigger_2()
 {
-        gpio_set_level(LED, 0);
+	button_state = 2;
+
+        //gpio_set_level(LED, 0);
 	//gpio_set_level(LED_2, 0);
 
-	ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
-        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+	//ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+        //ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
 
@@ -113,9 +130,33 @@ void app_main(void)
 	gpio_intr_enable(BUTTON_1);
 	gpio_intr_enable(BUTTON_2);
 
+	//install ledc fading capability
+	ledc_fade_func_install(0);
+
 
 	while(1)
 	{
+
+		if(button_state == 1)
+		{
+			button_state = 0;
+
+			//ledc_get_duty(SPEED_MODE, CHANNEL);
+			//raise duty cycle
+			current_duty_cycle = current_duty_cycle + 1000;
+
+			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+		} else if(button_state == 2)
+		{
+			button_state = 0;
+			//lower duty cycle
+			current_duty_cycle = current_duty_cycle - 1000;
+
+			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+                        ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+		};
+
 		vTaskDelay(100 / portTICK_PERIOD_MS);
-	}
+	};
 }
