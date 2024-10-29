@@ -4,21 +4,19 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-/* this program with have multiple revisions
+/*
+this program with have multiple revisions
    v1 - 2 buttons one led on/off  -- complete
    v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm -- complete
-   v3 - 2 buttons 1 led pwm -- in progress
-   v2 - 3 buttons 1 led pwm + on/off */
+   v3 - 2 buttons 1 led pwm -- complete
+   v2 - 3 buttons 1 led pwm + on/off -- not started
+*/
 
 #define BUTTON_1 26
-// check if pin 7 works for input/interrupt
+
 #define BUTTON_2 7
 
 #define LED 25
-
-// replaced by LEDC_OUTPUT_IO
-//#define LED_2 25
-
 
 // led pwm control variables
 #define TIMER_NUM LEDC_TIMER_0
@@ -75,24 +73,12 @@ static void led_pwm()
 static void button_trigger_1()
 {
 	button_state = 1;
-
-	//gpio_set_level(LED, 1);
-	//gpio_set_level(LED_2, 1);
-
-	//ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_DUTY);
-	//ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
 
 static void button_trigger_2()
 {
 	button_state = 2;
-
-        //gpio_set_level(LED, 0);
-	//gpio_set_level(LED_2, 0);
-
-	//ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
-        //ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
 
@@ -113,6 +99,7 @@ void app_main(void)
 	// button 2 uses a pulldown resistor keeping the pin at 0v until the button is pressed allowing vcc to flow through pin causing a positive/rising edge
         gpio_set_pull_mode(BUTTON_2, GPIO_PULLDOWN_ONLY);
 
+	// interrupt type
 	gpio_set_intr_type(BUTTON_1, GPIO_INTR_NEGEDGE);
         gpio_set_intr_type(BUTTON_2, GPIO_INTR_POSEDGE);
 
@@ -120,10 +107,10 @@ void app_main(void)
 	// LEDS
 	gpio_set_direction(LED, GPIO_MODE_OUTPUT);
 
-	//gpio_set_direction(LED_2, GPIO_MODE_OUTPUT);
 	//setup interrupt handler service
-
 	gpio_install_isr_service(0);
+
+	// connect interrupt to interrupt handler
 	gpio_isr_handler_add(BUTTON_1, button_trigger_1, NULL);
         gpio_isr_handler_add(BUTTON_2, button_trigger_2, NULL);
 
@@ -139,20 +126,25 @@ void app_main(void)
 
 		if(button_state == 1)
 		{
+			// reset button state
 			button_state = 0;
 
-			//ledc_get_duty(SPEED_MODE, CHANNEL);
 			//raise duty cycle
 			current_duty_cycle = current_duty_cycle + 1000;
 
+			//fade to updated duty cycle
 			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
 			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+
 		} else if(button_state == 2)
 		{
+			//reset button state
 			button_state = 0;
+
 			//lower duty cycle
 			current_duty_cycle = current_duty_cycle - 1000;
 
+			//fade to updated duty cycle
 			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
                         ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 		};
