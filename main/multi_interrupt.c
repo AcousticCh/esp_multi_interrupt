@@ -9,8 +9,10 @@ this program with have multiple revisions
    v1 - 2 buttons one led on/off  -- complete
    v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm -- complete
    v3 - 2 buttons 1 led pwm -- complete
-   v2 - 3 buttons 1 led pwm + on/off -- not started
+   v2 - 3 buttons 1 led pwm + on/off -- functioning, in progress. change incremental duty cycle adjustments to preselected array choices. and refactor
 */
+
+#define BUTTON_ON_OFF 5 // add pin
 
 #define BUTTON_1 26
 
@@ -20,7 +22,7 @@ this program with have multiple revisions
 
 // led pwm control variables
 #define TIMER_NUM LEDC_TIMER_0
-#define SPEED_MODE LEDC_LOW_SPEED_MODE
+#define SPEED_MODE LEDC_HIGH_SPEED_MODE
 #define LED_PIN 27 // output pin
 #define CHANNEL LEDC_CHANNEL_0 // controlled by channel 0
 #define DUTY_CYCLE_BITS LEDC_TIMER_13_BIT // duty resolution of 13 bits
@@ -36,6 +38,7 @@ state 1 is rising duty cycle
 state 2 is falling duty cycle
 */
 
+uint32_t button_on_off = 0;
 uint32_t button_state = 0;
 uint32_t current_duty_cycle = 0;
 
@@ -70,6 +73,20 @@ static void led_pwm()
 	ledc_channel_config(&ledc_channel);
 }
 
+
+static void button_on_off_h()
+{
+
+	if(button_on_off == 0)
+	{
+		button_on_off = 1;
+	} else if(button_on_off == 1)
+	{
+		button_on_off = 0;
+	};
+}
+
+
 static void button_trigger_1()
 {
 	button_state = 1;
@@ -90,8 +107,13 @@ void app_main(void)
 	led_pwm();
 
 	// BUTTONS
+	gpio_set_direction(BUTTON_ON_OFF, GPIO_MODE_INPUT);
+
 	gpio_set_direction(BUTTON_1, GPIO_MODE_INPUT);
         gpio_set_direction(BUTTON_2, GPIO_MODE_INPUT);
+
+
+	gpio_set_pull_mode(BUTTON_ON_OFF, GPIO_PULLUP_ONLY);
 
 	//button 1 uses a pullup resistor keeping the pin at Vcc until button is pressed switching the V from vcc to 0v for a negative/falling edge
 	gpio_set_pull_mode(BUTTON_1, GPIO_PULLUP_ONLY);
@@ -99,7 +121,11 @@ void app_main(void)
 	// button 2 uses a pulldown resistor keeping the pin at 0v until the button is pressed allowing vcc to flow through pin causing a positive/rising edge
         gpio_set_pull_mode(BUTTON_2, GPIO_PULLDOWN_ONLY);
 
+
+
+
 	// interrupt type
+	gpio_set_intr_type(BUTTON_ON_OFF, GPIO_INTR_NEGEDGE);
 	gpio_set_intr_type(BUTTON_1, GPIO_INTR_NEGEDGE);
         gpio_set_intr_type(BUTTON_2, GPIO_INTR_POSEDGE);
 
@@ -111,9 +137,11 @@ void app_main(void)
 	gpio_install_isr_service(0);
 
 	// connect interrupt to interrupt handler
+	gpio_isr_handler_add(BUTTON_ON_OFF, button_on_off_h, NULL);
 	gpio_isr_handler_add(BUTTON_1, button_trigger_1, NULL);
         gpio_isr_handler_add(BUTTON_2, button_trigger_2, NULL);
 
+	gpio_intr_enable(BUTTON_ON_OFF);
 	gpio_intr_enable(BUTTON_1);
 	gpio_intr_enable(BUTTON_2);
 
@@ -124,7 +152,48 @@ void app_main(void)
 	while(1)
 	{
 
-		if(button_state == 1)
+		if(button_on_off == 1)
+		{
+			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, 50);
+			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+
+			switch(button_state)
+			{
+				case 1:
+					// reset button state
+                	        	button_state = 0;
+
+	                        	//raise duty cycle
+	                        	current_duty_cycle = current_duty_cycle + 1000;
+
+	                        	//fade to updated duty cycle
+	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+					break;
+
+				case 2:
+					//reset button state
+	                        	button_state = 0;
+
+	                        	//lower duty cycle
+	                        	current_duty_cycle = current_duty_cycle - 1000;
+
+	                        	//fade to updated duty cycle
+	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+					break;
+
+			}; //end of switch statement
+		} else
+		{
+			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, 0, 50);
+			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+		}; //end of if statement
+
+
+
+
+		/*if(button_state == 1)
 		{
 			// reset button state
 			button_state = 0;
@@ -147,8 +216,8 @@ void app_main(void)
 			//fade to updated duty cycle
 			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
                         ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
-		};
+		};*/
 
 		vTaskDelay(100 / portTICK_PERIOD_MS);
-	};
+	}; //end of while statement
 }
