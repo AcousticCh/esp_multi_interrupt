@@ -41,6 +41,8 @@ state 2 is falling duty cycle
 uint32_t button_on_off = 0;
 uint32_t button_state = 0;
 uint32_t current_duty_cycle = 0;
+uint32_t duty_steps[] = {0, 1000, 2000, 3000, 4000};
+uint32_t duty_selector = 0;
 
 
 // start function for led pwm
@@ -154,7 +156,7 @@ void app_main(void)
 
 		if(button_on_off == 1)
 		{
-			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, 50);
+			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], 50);
 			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 
 			switch(button_state)
@@ -164,10 +166,14 @@ void app_main(void)
                 	        	button_state = 0;
 
 	                        	//raise duty cycle
-	                        	current_duty_cycle = current_duty_cycle + 1000;
+	                        	//current_duty_cycle = current_duty_cycle + 1000;
+					if(duty_selector < 4)
+                                        {
+                                                ++duty_selector;
+                                        };
 
 	                        	//fade to updated duty cycle
-	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], FADE_TIME_MS);
 	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 					break;
 
@@ -176,10 +182,14 @@ void app_main(void)
 	                        	button_state = 0;
 
 	                        	//lower duty cycle
-	                        	current_duty_cycle = current_duty_cycle - 1000;
+	                        	//current_duty_cycle = current_duty_cycle - 1000;
+					if(duty_selector > 0)
+					{
+						--duty_selector;
+					};
 
 	                        	//fade to updated duty cycle
-	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
+	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], FADE_TIME_MS);
 	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 					break;
 
