@@ -9,10 +9,10 @@ this program with have multiple revisions
    v1 - 2 buttons one led on/off  -- complete
    v2 - 2 buttons 2 leds on/off, LED 2 will be dimmed using pwm -- complete
    v3 - 2 buttons 1 led pwm -- complete
-   v2 - 3 buttons 1 led pwm + on/off -- functioning, in progress. change incremental duty cycle adjustments to preselected array choices. and refactor
+   v4 - 3 buttons 1 led pwm + on/off -- complete. might be refactored
 */
 
-#define BUTTON_ON_OFF 5 // add pin
+#define BUTTON_ON_OFF 5
 
 #define BUTTON_1 26
 
@@ -28,9 +28,7 @@ this program with have multiple revisions
 #define DUTY_CYCLE_BITS LEDC_TIMER_13_BIT // duty resolution of 13 bits
 #define DUTY_CYCLE (0) // 50% duty cycle (2 ** 13) * 50% = 4096
 #define FREQ_HZ (4000) // frequency in hertz (4khz)
-#define MAX_DUTY_CYCLE (4096)
-
-#define FADE_TIME_MS 1000
+#define FADE_TIME_MS 1000 // 1 second fade time, value in milliseconds
 
 /*
 button state 0 is doing nothing
@@ -38,11 +36,10 @@ state 1 is rising duty cycle
 state 2 is falling duty cycle
 */
 
-uint32_t button_on_off = 0;
-uint32_t button_state = 0;
-uint32_t current_duty_cycle = 0;
-uint32_t duty_steps[] = {0, 1000, 2000, 3000, 4000};
-uint32_t duty_selector = 0;
+uint32_t button_on_off = 0; // checks if button on off was pressed
+uint32_t button_state = 0; // changed by button 1 and button 2 interrupt handlers for condition checking
+uint32_t duty_steps[] = {0, 1000, 2000, 3000, 4000}; // array of duty cycles chosen with duty selector
+uint32_t duty_selector = 0; // this variables integer  is used to get and change current duty cycle
 
 
 // start function for led pwm
@@ -76,6 +73,7 @@ static void led_pwm()
 }
 
 
+// button on off handler
 static void button_on_off_h()
 {
 
@@ -89,12 +87,14 @@ static void button_on_off_h()
 }
 
 
+// button 1 handler
 static void button_trigger_1()
 {
 	button_state = 1;
 }
 
 
+// button 2 handler
 static void button_trigger_2()
 {
 	button_state = 2;
@@ -156,8 +156,11 @@ void app_main(void)
 
 		if(button_on_off == 1)
 		{
+			if(duty_selector > 0)
+			{
 			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], 50);
 			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
+			};
 
 			switch(button_state)
 			{
@@ -165,30 +168,30 @@ void app_main(void)
 					// reset button state
                 	        	button_state = 0;
 
-	                        	//raise duty cycle
-	                        	//current_duty_cycle = current_duty_cycle + 1000;
+					// CREATE A FUMCTION TO INCREMENT SELECTOR
+
+	                        	// raise duty cycle
 					if(duty_selector < 4)
                                         {
                                                 ++duty_selector;
                                         };
 
-	                        	//fade to updated duty cycle
+	                        	// fade to updated duty cycle
 	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], FADE_TIME_MS);
 	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 					break;
 
 				case 2:
-					//reset button state
+					// reset button state
 	                        	button_state = 0;
 
-	                        	//lower duty cycle
-	                        	//current_duty_cycle = current_duty_cycle - 1000;
+	                        	// lower duty cycle
 					if(duty_selector > 0)
 					{
 						--duty_selector;
 					};
 
-	                        	//fade to updated duty cycle
+	                        	// fade to updated duty cycle
 	                        	ledc_set_fade_with_time(SPEED_MODE, CHANNEL, duty_steps[duty_selector], FADE_TIME_MS);
 	                        	ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
 					break;
@@ -201,33 +204,7 @@ void app_main(void)
 		}; //end of if statement
 
 
-
-
-		/*if(button_state == 1)
-		{
-			// reset button state
-			button_state = 0;
-
-			//raise duty cycle
-			current_duty_cycle = current_duty_cycle + 1000;
-
-			//fade to updated duty cycle
-			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
-			ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
-
-		} else if(button_state == 2)
-		{
-			//reset button state
-			button_state = 0;
-
-			//lower duty cycle
-			current_duty_cycle = current_duty_cycle - 1000;
-
-			//fade to updated duty cycle
-			ledc_set_fade_with_time(SPEED_MODE, CHANNEL, current_duty_cycle, FADE_TIME_MS);
-                        ledc_fade_start(SPEED_MODE, CHANNEL, LEDC_FADE_WAIT_DONE);
-		};*/
-
+		// loop delay of 100 ms
 		vTaskDelay(100 / portTICK_PERIOD_MS);
-	}; //end of while statement
-}
+	}; // end of while statement
+} // end of main
